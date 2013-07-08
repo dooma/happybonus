@@ -4,6 +4,7 @@ var dbServer = require('mongodb').Server;
 var ObjectID = require('mongodb').ObjectID;
 var projection = {fields: {'happybonus': 1, 'person': 1}};
 var url = require('url');
+var jade = require('jade');
 
 var database = new db('sag-shops', new dbServer('localhost', 27017), {safe: false});
 database.open(function(error, db){
@@ -23,17 +24,50 @@ var convertToObject = function(string){
   return object;
 }
 
+var readTemplate = function(){
+  var fs = require('fs');
+  var header = fs.readFileSync(__dirname + '/public/header.html');
+  var footer = fs.readFileSync(__dirname + '/public/footer.html');
+  return [header, footer]
+}
+
+var index = function(data){
+  var template = readTemplate();
+  var form = template[0] + '<ul>';
+  for(var i = 0; i < data.length; ++i){
+    form += '<li><a href="/show?id=' + data[i]['_id'] + '">'
+      + data[i]['person']['fname'] + ' ' + data[i]['person']['lname'] +
+      ' ' + (data[i]['happybonus']['points'] || 0) + '</a></li>';
+  }
+  form += '</ul>' + template[1];
+  return form;
+}
+
+var show = function(data){
+  var template = readTemplate();
+  var form = template[0] + data['person']['fname'] + ' ' + data['person']['lname']
+    + '<form name="points" action="/edit?id=' + data['_id'] + '" method="POST">'
+    + 'Points: <input type="text" name="points" placeholder="' + (data['happybonus']['points'] || 0) + '"> '
+    + '<input type="submit" value="Change"></form>'
+    + '<form name="remove" action="/remove?id=' + data['_id'] + '" method="GET">'
+    + '<input type="submit" value="Remove"></form>'
+    + template[1];
+  return form;
+}
+
 var server = http.createServer(function(request, response){
-  response.writeHeader(200, {'Content-type': 'text/plain'});
+  response.writeHeader(200, {'Content-type': 'text/html'});
   var urlParsed = url.parse(request.url, true);
   if(urlParsed.pathname === '/' || urlParsed.pathname === '/index'){
     collection.find({}, projection).toArray(function(error, docs){
       if(error) throw error;
-      for(var i = 0; i < docs.length; ++i)
-        if(typeof(docs['happybonus']) === 'undefined' ||
-          typeof(docs['person']) === 'undefined')
+      for(var i = 0; i < docs.length; i++)
+        if(typeof(docs[i]['happybonus']) === 'undefined' ||
+          typeof(docs[i]['person']) === 'undefined'){
           docs.splice(i, 1);
-      response.end(JSON.stringify(docs));
+          --i;
+        }
+      response.end(index(docs));
     });
   } else if(urlParsed.pathname === '/show'){
     if(typeof(urlParsed.query) == 'object' && urlParsed.query !== null){
@@ -42,9 +76,16 @@ var server = http.createServer(function(request, response){
         projection,
         function(error, data){
           if(error) throw error;
-          response.end(JSON.stringify(data));
+          response.end(show(data));
         });
     } else response.end('Sorry, you should pass an id!');
+  } else if(urlParsed.pathname === '/remove'){
+    if(typeof(urlParsed.query) === 'object' && urlParsed.query !== null){
+      collection.remove({_id: ObjectID(urlParsed.query['id'])}, function(error, doc){
+        if(error) throw error;
+        response.end('Removed successfully');
+      });
+    }
   }
   request.on('data', function(chunk){
     var data = convertToObject(chunk.toString());
@@ -57,7 +98,6 @@ var server = http.createServer(function(request, response){
             response.end('Updated successfully');
           });
       } else response.end('Sorry, you could not edit this user!');
-    } else if(urlParsed.pathname === '/remove'){
     }
   });
 }).listen(8000);
