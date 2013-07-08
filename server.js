@@ -33,7 +33,7 @@ var readTemplate = function(){
 
 var index = function(data){
   var template = readTemplate();
-  var form = template[0] + '<ul>';
+  var form = template[0] + '<a href="/transfer">Transfer points</a><ul>';
   for(var i = 0; i < data.length; ++i){
     form += '<li><a href="/show?id=' + data[i]['_id'] + '">'
       + data[i]['person']['fname'] + ' ' + data[i]['person']['lname'] +
@@ -41,6 +41,16 @@ var index = function(data){
   }
   form += '</ul>' + template[1];
   return form;
+}
+
+var sortData = function(docs){
+  for(var i = 0; i < docs.length; ++i)
+    if(typeof(docs[i]['happybonus']) === 'undefined' ||
+      typeof(docs[i]['person']) === 'undefined'){
+      docs.splice(i, 1);
+      --i;
+    }
+  return docs;
 }
 
 var show = function(data){
@@ -55,19 +65,33 @@ var show = function(data){
   return form;
 }
 
+var transfer = function(docs){
+  var template = readTemplate();
+  var form = template[0] + 'From: <select name="id" form="points">';
+  var data = sortData(docs);
+  for(var i = 0; i < data.length; ++i){
+    form += '<option value="' + data[i]['_id'] + '">' + data[i]['person']['fname'] + ' ' +
+      data[i]['person']['lname'] + ' ' + data[i]['happybonus']['points'] + '</option>';
+  }
+    form += '</select> to <select name="secondId" form="points">';
+  for(var i = 0; i < data.length; ++i){
+    form += '<option value="' + data[i]['_id'] + '">' + data[i]['person']['fname'] + ' ' +
+      data[i]['person']['lname'] + ' ' + data[i]['happybonus']['points'] + '</option>';
+  }
+  form += '</select><form id="points" name="points" action="/transfer" method="POST">'
+    + 'Points: <input type="text" name="points" placeholder="0"> '
+    + '<input type="submit" value="Transfer"></form>'
+    + template[1];
+  return form;
+}
+
 var server = http.createServer(function(request, response){
   response.writeHeader(200, {'Content-type': 'text/html'});
   var urlParsed = url.parse(request.url, true);
   if(urlParsed.pathname === '/' || urlParsed.pathname === '/index'){
     collection.find({}, projection).toArray(function(error, docs){
       if(error) throw error;
-      for(var i = 0; i < docs.length; i++)
-        if(typeof(docs[i]['happybonus']) === 'undefined' ||
-          typeof(docs[i]['person']) === 'undefined'){
-          docs.splice(i, 1);
-          --i;
-        }
-      response.end(index(docs));
+      response.end(index(sortData(docs)));
     });
   } else if(urlParsed.pathname === '/show'){
     if(typeof(urlParsed.query) == 'object' && urlParsed.query !== null){
@@ -86,6 +110,11 @@ var server = http.createServer(function(request, response){
         response.end('Removed successfully');
       });
     }
+  } else if(urlParsed.pathname === '/transfer'){
+    collection.find({}, projection).toArray(function(error, docs){
+      //console.log(transfer(docs));
+      response.end(transfer(docs));
+    });
   }
   request.on('data', function(chunk){
     var data = convertToObject(chunk.toString());
@@ -98,6 +127,32 @@ var server = http.createServer(function(request, response){
             response.end('Updated successfully');
           });
       } else response.end('Sorry, you could not edit this user!');
+    } else if(urlParsed.pathname === '/transfer'){
+      collection.findOne(
+        {_id: ObjectID(data['id'])}, projection, function(error, doc){
+          var difference = doc['happybonus']['points'] - parseInt(data['points'] || 0);
+          if(difference >= 0){
+            collection.update({_id: doc['_id']},
+              {$set:{'happybonus.points': difference}}, function(error){
+                if(error) throw error;
+                collection.findOne(
+                  {_id: ObjectID(data['secondId'])},
+                  projection, function(error, doc2){
+                    var sum = parseInt(doc2['happybonus']['points']) + parseInt(data['points'] || 0);
+                    collection.update({_id: doc2['_id']},
+                      {$set:{'happybonus.points': sum}}, function(error){
+                        if(error) throw error;
+                        response.end('Transfered ' + data['points'] + ' points successfully to ' +
+                          doc2['person']['fname'] + ' ' + doc2['person']['lname']);
+                      });
+                    });
+                response.write('Transfered ' + data['points'] + ' points successfully from ' +
+                  doc['person']['fname'] + ' ' + doc['person']['lname'] + '<br>');
+              });
+          } else {
+            response.end('User has not enough points');
+          }
+        });
     }
   });
 }).listen(8000);
