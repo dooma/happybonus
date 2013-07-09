@@ -1,63 +1,32 @@
 var http = require('http');
-var db = require('mongodb').Db;
-var dbServer = require('mongodb').Server;
-var ObjectID = require('mongodb').ObjectID;
-var projection = {fields: {'happybonus': 1, 'person': 1}};
+var nodeStatic = require('node-static');
 var url = require('url');
 var Functions = require('./functions.js');
-
-var database = new db('sag-shops', new dbServer('localhost', 27017), {safe: false});
-database.open (function (error, db) {
-    if (error) { throw error; }
-    collection = db.collection('users_happy');
-});
+var pages = new nodeStatic.Server('./public');
+var model = require('./model.js');
 
 var server = http.createServer(function (request, response) {
-    response.writeHeader(200, {'Content-type': 'text/html'});
     var urlParsed = url.parse(request.url, true);
-    if (urlParsed.pathname === '/' || urlParsed.pathname === '/index') {
-    collection.find({}, projection).toArray(function (error, docs) {
-        if (error) { throw error; }
-        response.end(Functions.index(Functions.sortData(docs)));
-    });
-    } else if (urlParsed.pathname === '/show') {
-        if (typeof(urlParsed.query) == 'object' && urlParsed.query !== null) {
-
-            collection.findOne({_id: ObjectID(urlParsed.query['id'])}, projection, function (error, data) {
-              if (error) { throw error; }
-              response.end(Functions.show(data));
-            });
-
-    } else response.end('Sorry, you should pass an id!');
-    } else if (urlParsed.pathname === '/remove') {
-        if (typeof(urlParsed.query) === 'object' && urlParsed.query !== null) {
-
-            collection.remove({_id: ObjectID(urlParsed.query['id'])}, function (error, doc) {
-                if (error) { throw error; }
-                response.end('Removed successfully');
-            });
-
-        }
-    } else if (urlParsed.pathname === '/transfer') {
-        collection.find({}, projection).toArray(function (error, docs) {
-          response.end(Functions.transfer(docs));
+    if (urlParsed.pathname === '/users') {
+        response.writeHead(200, { 'Content-type': 'text/plain' });
+        model.getUsers(urlParsed.query.query, function (error, data) {
+            response.end(JSON.stringify(data));
         });
-    }
+    } else if (urlParsed.pathname === '/user') {
+        response.writeHead(200, { 'Content-type': 'text/plain' });
+        model.getUser(urlParsed.query.id, function(error, data) {
+            response.end(JSON.stringify(data));
+        });
+    } else pages.serve(request, response);
 
     request.on('data', function (chunk) {
         var data = Functions.convertToObject(chunk.toString());
 
         if (urlParsed.pathname === '/edit') {
-            if (typeof(urlParsed.query) == 'object' && urlParsed.query !== null) {
-
-            collection.update({_id: ObjectID(urlParsed.query['id'])},
-              {$set: {'happybonus.points': parseInt(data['points'])}},
-              function (error, doc) {
-                if (error) { throw error; }
-                response.end('Updated successfully');
-              });
-
-            } else { response.end('Sorry, you could not edit this user!'); }
+            model.editUser(data.id, data.points, function (error, data) {
+                response.writeHead(200, { 'Content-type': 'text/plain' });
+                response.end('done');
+            });
         } else if (urlParsed.pathname === '/transfer') {
 
           collection.findOne({_id: ObjectID(data['id'])}, projection, function (error, doc) {
