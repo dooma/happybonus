@@ -1,0 +1,60 @@
+<html>
+  <head>
+    <title>Happypoints</title>
+    <link rel='stylesheet' type='text/css' href='css/bootstrap.min.css'/>
+  </head>
+  <body>
+    Who?
+    <input type='text' class='typeahead' data-provide='typeahead'/>
+    <div id='content'>
+      <fieldset>
+        <legend></legend>
+        <label>Points</label>
+        <input type='text' placeholder=''/>
+        <button id='change' class='btn'>Change</button>
+        <button id='transfer' class='btn'>Transfer</button>
+      </fieldset>
+    </div>
+    <script type='text/javascript' src='http://code.jquery.com/jquery-2.0.3.min.js'></script>
+    <script type='text/javascript' src='js/bootstrap.min.js'></script>
+    <script>
+      var init = function () {
+        ids = [], users = [];
+        $('#content').hide();
+      }
+      init();
+      $('.typeahead').typeahead({
+        source: function(query, process){
+          return $.get('/users', {query: query}, function (data) {
+            init();
+            data = $.parseJSON(data);
+            for (var i = 0; i < data.length; ++i) {
+              users.push(data[i]['person']['fname'] + ' ' + data[i]['person']['lname'] + ' ' + data[i]['happybonus']['points']);
+              ids.push(data[i]['_id']);
+            }
+            return process(users);
+          });
+        },
+        updater: function(selection){
+          showForm(ids[users.indexOf(selection)]);
+        }
+      });
+
+      var showForm = function (id) {
+        $.get('/user', {id: id}, function (data) {
+          data = $.parseJSON(data);
+          ids.push(data['_id']);
+          $('#content input').val(data['happybonus']['points'] || 0);
+          $('#content legend').text(data['person']['fname'] + ' ' + data['person']['lname']);
+          $('#content').show();
+        });
+      }
+
+      $('#content #change').click(function () {
+        $.post('/edit', {points: $('#content input').val(), id: ids[0] }, 'json').done(function (data) {
+          console.log(data);
+        });
+      });
+    </script>
+  </body>
+</html>
