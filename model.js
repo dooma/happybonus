@@ -9,44 +9,42 @@ database.open (function (error, db) {
     collection = db.collection('users_happy');
 });
 
-module.exports = {
-    getUsers: function (pattern, callback) {
-        pattern = pattern.toLowerCase().replace(/\s+/, '|');
-        pattern = new RegExp(pattern, 'i');
-        var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, 'meta': pattern};
-        collection.find(query, projection).toArray(callback);
-    },
-    getUser: function (id, callback) {
-        var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, '_id': ObjectID(id)};
-        collection.findOne(query, projection, callback);
-    },
-    editUser: function (id, points, callback) {
-        var query = {'_id': ObjectID(id)};
-        collection.update(query, {$set: {'happybonus.points': parseInt(points)}}, callback);
-    },
-    transfer: function (ids, points, callback) {
-        var convertPoints = function (points) {
-            if (isNaN(parseInt(points))) { return 0 };
-            return parseInt(points);
-        };
+exports.getUsers = function (pattern, callback) {
+    pattern = pattern.toLowerCase().replace(/\s+/, '|');
+    pattern = new RegExp(pattern, 'i');
+    var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, 'meta': pattern};
+    collection.find(query, projection).toArray(callback);
+};
+exports.getUser = function (id, callback) {
+    var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, '_id': ObjectID(id)};
+    collection.findOne(query, projection, callback);
+};
+exports.editUser = function (id, points, callback) {
+    var query = {'_id': ObjectID(id)};
+    collection.update(query, {$set: {'happybonus.points': parseInt(points)}}, callback);
+};
+exports.transfer = function (ids, points, callback) {
+    var convertPoints = function (points) {
+        if (isNaN(parseInt(points))) { return 0 };
+        return parseInt(points);
+    };
 
-        points = convertPoints(points);
+    points = convertPoints(points);
 
-        var query = {'_id': ObjectID(ids[0])};
-        collection.findOne(query, projection, function (error, doc) {
-            var diff = convertPoints(doc['happybonus']['points']) - points;
+    var query = {'_id': ObjectID(ids[0])};
+    collection.findOne(query, projection, function (error, doc) {
+        var diff = convertPoints(doc['happybonus']['points']) - points;
 
-            if (diff < 0) { callback('User has not enough points', 'done'); }
-            else {
-                collection.update(query, {$set: {'happybonus.points': diff}}, function (error, result) {
-                    query = {'_id': ObjectID(ids[1])};
+        if (diff < 0) { callback('User has not enough points', 'done'); }
+        else {
+            collection.update(query, {$set: {'happybonus.points': diff}}, function (error, result) {
+                query = {'_id': ObjectID(ids[1])};
 
-                    collection.findOne(query, projection, function(error, doc) {
-                        var sum = convertPoints(doc['happybonus']['points']) + points;
-                        collection.update(query, {$set: {'happybonus.points': sum}}, callback);
-                    });
+                collection.findOne(query, projection, function(error, doc) {
+                    var sum = convertPoints(doc['happybonus']['points']) + points;
+                    collection.update(query, {$set: {'happybonus.points': sum}}, callback);
                 });
-            }
-        });
-    }
-}
+            });
+        }
+    });
+};
