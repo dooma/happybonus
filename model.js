@@ -16,12 +16,37 @@ module.exports = {
         var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, 'meta': pattern};
         collection.find(query, projection).toArray(callback);
     },
-    getUser: function (pattern, callback) {
-        var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, '_id': ObjectID(pattern)};
+    getUser: function (id, callback) {
+        var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, '_id': ObjectID(id)};
         collection.findOne(query, projection, callback);
     },
-    editUser: function (pattern, points, callback) {
-        var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, '_id': ObjectID(pattern)};
-        collection.update(query, {$set: {'happybonus.points': parseInt(points)}})//, callback)
+    editUser: function (id, points, callback) {
+        var query = {'_id': ObjectID(id)};
+        collection.update(query, {$set: {'happybonus.points': parseInt(points)}}, callback);
+    },
+    transfer: function (ids, points, callback) {
+        var convertPoints = function (points) {
+            if (isNaN(parseInt(points))) { return 0 };
+            return parseInt(points);
+        };
+
+        points = convertPoints(points);
+
+        var query = {'_id': ObjectID(ids[0])};
+        collection.findOne(query, projection, function (error, doc) {
+            var diff = convertPoints(doc['happybonus']['points']) - points;
+
+            if (diff < 0) { callback('User has not enough points', 'done'); }
+            else {
+                collection.update(query, {$set: {'happybonus.points': diff}}, function (error, result) {
+                    query = {'_id': ObjectID(ids[1])};
+
+                    collection.findOne(query, projection, function(error, doc) {
+                        var sum = convertPoints(doc['happybonus']['points']) + points;
+                        collection.update(query, {$set: {'happybonus.points': sum}}, callback);
+                    });
+                });
+            }
+        });
     }
 }
