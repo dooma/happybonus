@@ -28,28 +28,10 @@ var server = http.createServer(function (request, response) {
                 response.end('done');
             });
         } else if (urlParsed.pathname === '/transfer') {
-
-          collection.findOne({_id: ObjectID(data['id'])}, projection, function (error, doc) {
-            var difference = doc['happybonus']['points'] - parseInt(data['points'] || 0);
-            if (difference >= 0) {
-
-              collection.update({_id: doc['_id']}, {$set:{'happybonus.points': difference}}, function (error) {
-                if (error) { throw error; }
-
-                collection.findOne({_id: ObjectID(data['secondId'])}, projection, function (error, doc2) {
-                  var sum = parseInt(doc2['happybonus']['points']) + parseInt(data['points'] || 0);
-
-                  collection.update({_id: doc2['_id']}, {$set: {'happybonus.points': sum}}, function (error) {
-                    if (error) { throw error; }
-                    response.end('Transfered ' + data['points'] + ' points successfully to ' +
-                      doc2['person']['fname'] + ' ' + doc2['person']['lname']);
-                  });
-                });
-                response.write('Transfered ' + data['points'] + ' points successfully from ' +
-                  doc['person']['fname'] + ' ' + doc['person']['lname'] + '<br>');
-                });
-            } else { response.end('User has not enough points'); }
-          });
+            model.transfer([data.firstId, data.secondId], data.points, function (error, data) {
+                response.writeHead(200, { 'Content-type': 'text/plain' });
+                response.end('done');
+            });
         }
     });
 }).listen(8000);
