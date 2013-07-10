@@ -15,7 +15,7 @@ var server = http.createServer(function (request, response) {
     } else if (urlParsed.pathname === '/user') {
         response.writeHead(200, { 'Content-type': 'application/json' });
         model.getUser(urlParsed.query.id, function(error, data) {
-            response.end(data);
+            response.end(JSON.stringify(data));
         });
     } else pages.serve(request, response);
 
