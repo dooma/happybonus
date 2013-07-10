@@ -11,7 +11,7 @@ database.open (function (error, db) {
 
 exports.getUsers = function (pattern, callback) {
     pattern = pattern.toLowerCase().replace(/\s+/, '|');
-    pattern = new RegExp(pattern, 'i');
+    pattern = new RegExp(pattern);
     var query = {'person': {$exists: 1}, 'happybonus': {$exists: 1}, 'meta': pattern};
     collection.find(query, projection).toArray(callback);
 };
