@@ -8,14 +8,14 @@ var model = require('./model.js');
 var server = http.createServer(function (request, response) {
     var urlParsed = url.parse(request.url, true);
     if (urlParsed.pathname === '/users') {
-        response.writeHead(200, { 'Content-type': 'text/plain' });
+        response.writeHead(200, { 'Content-type': 'application/json' });
         model.getUsers(urlParsed.query.query, function (error, data) {
             response.end(JSON.stringify(data));
         });
     } else if (urlParsed.pathname === '/user') {
-        response.writeHead(200, { 'Content-type': 'text/plain' });
+        response.writeHead(200, { 'Content-type': 'application/json' });
         model.getUser(urlParsed.query.id, function(error, data) {
-            response.end(JSON.stringify(data));
+            response.end(data);
         });
     } else pages.serve(request, response);
 

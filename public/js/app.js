@@ -18,7 +18,6 @@ $('#init #transfer').click(function () {
 
 var showChange = function (id) {
     $.get('/user', {id: id}, function (data) {
-        data = $.parseJSON(data);
         ids = [data['_id']];
         $('#changeContainer input').val(data['person']['fname'] + ' ' + data['person']['lname']);
         $('#changeContainer .commit input').val(data['happybonus']['points'] || 0);
@@ -31,7 +30,6 @@ $('.typeahead').typeahead({
         $.get('/users', {query: query}, function (data) {
             ids = [];
             users = []
-            data = $.parseJSON(data);
             for (var i = 0; i < data.length; ++i) {
                 users.push(data[i]['person']['fname'] + ' ' + data[i]['person']['lname'] + ' ' + (data[i]['happybonus']['points'] || 0));
                 ids.push(data[i]['_id']);
@@ -51,7 +49,6 @@ $('#changeContainer .commit button').click(function () {
 
 var setToFirstField = function (id) {
     $.get('/user', {id: id}, function (data) {
-        data = $.parseJSON(data);
         ids[0] = data['_id'];
         $('#transferContainer #firstTypeahead').val(data['person']['fname'] + ' ' + data['person']['lname']);
         $('#transferContainer .commit input').val(data['happybonus']['points'] || 0);
@@ -63,7 +60,6 @@ $('#firstTypeahead').typeahead({
         $.get('/users', {query: query}, function (data) {
             ids = [];
             users = []
-            data = $.parseJSON(data);
             for (var i = 0; i < data.length; ++i) {
                 users.push(data[i]['person']['fname'] + ' ' + data[i]['person']['lname'] + ' ' + (data[i]['happybonus']['points'] || 0));
                 ids.push(data[i]['_id']);
@@ -81,7 +77,6 @@ $('#secondTypeahead').typeahead({
         $.get('/users', {query: query}, function (data) {
             ids = [];
             users = []
-            data = $.parseJSON(data);
             for (var i = 0; i < data.length; ++i) {
                 users.push(data[i]['person']['fname'] + ' ' + data[i]['person']['lname'] + ' ' + (data[i]['happybonus']['points'] || 0));
                 ids.push(data[i]['_id']);
@@ -96,7 +91,6 @@ $('#secondTypeahead').typeahead({
 
 var setToSecondField = function (id) {
     $.get('/user', {id: id}, function (data) {
-        data = $.parseJSON(data);
         ids[1] = data['_id'];
         $('#transferContainer #secondTypeahead').val(data['person']['fname'] + ' ' + data['person']['lname']);
         $('#transferContainer .commit').show();
